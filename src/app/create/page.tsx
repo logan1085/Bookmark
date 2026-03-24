@@ -70,6 +70,7 @@ export default function CreatePage() {
           setStep({ status: "done", digest: event.digest });
         }
         if (event.type === "error") {
+          setEvents((prev) => [...prev, event]);
           setStep({ status: "idle" });
         }
       }

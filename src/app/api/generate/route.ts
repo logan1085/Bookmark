@@ -7,32 +7,43 @@ export const maxDuration = 60; // extend Vercel timeout to 60s
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 async function fetchArticle(url: string): Promise<string> {
   // Try Jina reader first
   try {
     const jinaUrl = `https://r.jina.ai/${url}`;
-    const res = await fetch(jinaUrl, {
-      headers: { Accept: "text/plain" },
-      signal: AbortSignal.timeout(15000),
-    });
+    const res = await withTimeout(
+      fetch(jinaUrl, { headers: { Accept: "text/plain" } }),
+      20000
+    );
     if (res.ok) {
       const text = await res.text();
       if (text.length > 200) return text.slice(0, 8000);
     }
-  } catch {
-    // fall through to direct fetch
+  } catch (e) {
+    console.error("Jina fetch failed:", e);
   }
 
-  // Fallback: fetch the page directly
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0" },
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) throw new Error(`Could not fetch article at ${url}`);
-  const html = await res.text();
-  // Strip tags crudely
-  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 8000);
-  return text;
+  // Fallback: direct fetch
+  try {
+    const res = await withTimeout(
+      fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } }),
+      10000
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const html = await res.text();
+    return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 8000);
+  } catch (e) {
+    throw new Error(`Could not fetch article: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 function send(controller: ReadableStreamDefaultController, event: GenerateEvent) {
