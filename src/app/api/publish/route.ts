@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const html = buildEmailHtml(digest);
 
     await getResend().emails.send({
-      from: "Bookmark <LoganHorowitz2@gmail.com>",
+      from: "Bookmark <onboarding@resend.dev>",
       to: emails,
       subject: `📖 Week ${digest.week}: ${digest.title}`,
       html,
