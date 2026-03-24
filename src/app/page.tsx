@@ -1,25 +1,55 @@
 import { Nav } from "@/components/nav";
 import { SubscribeForm } from "@/components/subscribe-form";
-import { getCurrentWeek, getWeekGroups } from "@/data/articles";
 import { ArticleCard } from "@/components/article-card";
+import { getSupabase } from "@/lib/supabase";
 import Link from "next/link";
 import { ArrowRight, PenLine } from "lucide-react";
+import type { Digest } from "@/types/digest";
 
-export default function Home() {
-  const currentWeek = getCurrentWeek();
-  const allWeeks = getWeekGroups();
-  const pastWeeks = allWeeks.slice(1, 4);
+async function getDigests(): Promise<Digest[]> {
+  try {
+    const supabase = getSupabase();
+    const { data } = await supabase
+      .from("digests")
+      .select("*")
+      .order("year", { ascending: false })
+      .order("week", { ascending: false })
+      .limit(10);
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function weekLabel(week: number, year: number): string {
+  const jan4 = new Date(year, 0, 4);
+  const dayOfWeek = jan4.getDay() || 7;
+  const monday = new Date(jan4);
+  monday.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${fmt(monday)} – ${fmt(sunday)}, ${year}`;
+}
+
+export const revalidate = 60;
+
+export default async function Home() {
+  const digests = await getDigests();
+  const current = digests[0];
+  const past = digests.slice(1, 4);
 
   return (
     <div className="min-h-screen bg-stone-50">
       <Nav />
 
       <main className="mx-auto max-w-2xl px-4 py-12">
-        {/* Hero */}
         <header className="mb-14">
-          <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">
-            Week {currentWeek?.week} · {currentWeek?.year}
-          </p>
+          {current && (
+            <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">
+              Week {current.week} · {current.year}
+            </p>
+          )}
           <h1 className="text-4xl font-bold tracking-tight text-stone-900 mb-4 leading-tight">
             Three articles.<br />Every week.<br />No noise.
           </h1>
@@ -30,57 +60,98 @@ export default function Home() {
         </header>
 
         {/* This week */}
-        {currentWeek && (
+        {current ? (
           <section className="mb-16">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-1">
                   This Week
                 </h2>
-                <p className="text-sm text-stone-500">{currentWeek.label}</p>
+                <p className="text-sm text-stone-500">{weekLabel(current.week, current.year)}</p>
               </div>
-              <Link
-                href="/create"
-                className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-900 transition-colors"
-              >
+              <Link href="/create" className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-900 transition-colors">
                 <PenLine size={12} /> New digest
               </Link>
             </div>
+
+            {current.title && (
+              <div className="mb-6 rounded-2xl bg-white border border-stone-200 px-6 py-5">
+                <h3 className="font-bold text-stone-900 text-lg mb-2">{current.title}</h3>
+                <p className="text-sm text-stone-500 leading-relaxed">{current.intro}</p>
+              </div>
+            )}
+
             <div className="space-y-4">
-              {currentWeek.articles.map((article) => (
-                <ArticleCard
-                  key={article.id}
-                  article={article}
-                  featured={article.rank === 1}
-                />
+              {current.articles.map((article, i) => (
+                <a
+                  key={i}
+                  href={article.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`group block rounded-2xl border bg-white p-6 transition-shadow hover:shadow-md ${i === 0 ? "border-stone-900" : "border-stone-200"}`}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full ${i === 0 ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-500"}`}>
+                        {["Top Pick", "Also Great", "Worth Reading"][i]}
+                      </span>
+                      <span className="text-xs text-stone-400">{article.source}</span>
+                    </div>
+                  </div>
+                  <h3 className={`font-bold text-stone-900 leading-snug mb-2 ${i === 0 ? "text-xl" : "text-lg"}`}>
+                    {article.title}
+                  </h3>
+                  <p className="text-sm text-stone-500 leading-relaxed mb-3">{article.summary}</p>
+                  <p className="text-sm text-stone-400 italic border-l-2 border-stone-200 pl-3">
+                    {article.keyInsight}
+                  </p>
+                </a>
               ))}
             </div>
+          </section>
+        ) : (
+          <section className="mb-16 text-center py-16 text-stone-400">
+            <p>No digest published yet.</p>
+            <Link href="/create" className="mt-3 inline-block text-sm text-stone-900 underline">
+              Create the first one →
+            </Link>
           </section>
         )}
 
         {/* Past weeks */}
-        {pastWeeks.length > 0 && (
+        {past.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400">
                 From the Archive
               </h2>
-              <Link
-                href="/archive"
-                className="flex items-center gap-1 text-xs text-stone-400 hover:text-stone-900 transition-colors"
-              >
+              <Link href="/archive" className="flex items-center gap-1 text-xs text-stone-400 hover:text-stone-900 transition-colors">
                 View all <ArrowRight size={12} />
               </Link>
             </div>
             <div className="space-y-8">
-              {pastWeeks.map((week) => (
-                <div key={`${week.year}-${week.week}`}>
+              {past.map((digest) => (
+                <div key={`${digest.year}-${digest.week}`}>
                   <p className="text-xs font-medium text-stone-400 mb-3 uppercase tracking-wide">
-                    {week.label}
+                    {weekLabel(digest.week, digest.year)}
                   </p>
-                  <ArticleCard article={week.articles[0]} />
+                  {digest.articles[0] && (
+                    <a
+                      href={digest.articles[0].url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group block rounded-2xl border border-stone-200 bg-white p-6 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-semibold uppercase tracking-widest bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">Top Pick</span>
+                        <span className="text-xs text-stone-400">{digest.articles[0].source}</span>
+                      </div>
+                      <h3 className="font-bold text-stone-900 leading-snug mb-1">{digest.articles[0].title}</h3>
+                      <p className="text-sm text-stone-500 line-clamp-2">{digest.articles[0].summary}</p>
+                    </a>
+                  )}
                   <Link
-                    href={`/archive/${week.year}/${week.week}`}
+                    href={`/archive/${digest.year}/${digest.week}`}
                     className="mt-3 inline-flex items-center gap-1 text-xs text-stone-400 hover:text-stone-700 transition-colors"
                   >
                     See all 3 from this week <ArrowRight size={11} />
@@ -95,10 +166,7 @@ export default function Home() {
       <footer className="border-t border-stone-200 mt-16 py-8">
         <div className="mx-auto max-w-2xl px-4 text-center text-xs text-stone-400">
           Curated by Logan Horowitz &mdash;{" "}
-          <a
-            href="mailto:LoganHorowitz2@gmail.com"
-            className="underline underline-offset-2 hover:text-stone-600"
-          >
+          <a href="mailto:LoganHorowitz2@gmail.com" className="underline underline-offset-2 hover:text-stone-600">
             suggest an article
           </a>
         </div>
