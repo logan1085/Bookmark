@@ -68,14 +68,30 @@ export default function CreatePage() {
       text: isXUrl(inp.url) ? inp.pasteText : undefined,
     }));
 
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ articles: payload }),
-    });
+    console.log("[bookmark] starting generate", payload);
+
+    let res: Response;
+    try {
+      res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ articles: payload }),
+      });
+    } catch (err) {
+      const msg = `Network error: ${err instanceof Error ? err.message : String(err)}`;
+      console.error("[bookmark]", msg);
+      setErrorMsg(msg);
+      setStep({ status: "idle" });
+      return;
+    }
+
+    console.log("[bookmark] response status:", res.status);
 
     if (!res.ok) {
-      setErrorMsg(`Server error: ${res.status} ${res.statusText}`);
+      const body = await res.text().catch(() => "");
+      const msg = `Server error ${res.status}: ${body || res.statusText}`;
+      console.error("[bookmark]", msg);
+      setErrorMsg(msg);
       setStep({ status: "idle" });
       return;
     }
@@ -93,6 +109,7 @@ export default function CreatePage() {
     try {
       while (true) {
         const { done, value } = await reader.read();
+        console.log("[bookmark] stream chunk", { done, bytes: value?.length });
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n\n");
@@ -101,6 +118,7 @@ export default function CreatePage() {
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const event: GenerateEvent = JSON.parse(line.slice(6));
+          console.log("[bookmark] event", event);
           setEvents((prev) => [...prev, event]);
 
           if (event.type === "complete") {
@@ -114,7 +132,9 @@ export default function CreatePage() {
         }
       }
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Stream read failed");
+      const msg = `Stream error: ${err instanceof Error ? err.message : String(err)}`;
+      console.error("[bookmark]", msg);
+      setErrorMsg(msg);
       setStep({ status: "idle" });
     }
   }
