@@ -18,7 +18,7 @@ async function getAllDigests(): Promise<Digest[]> {
       title: a.title,
       source: a.source,
       summary: a.description,
-      keyInsight: a.why,
+      keyInsight: a.description,
       tags: a.tags,
       readTime: a.readTime,
     })),
