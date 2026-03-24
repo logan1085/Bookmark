@@ -90,7 +90,10 @@ export default function CreatePage() {
   }
 
   const canGenerate = urls.filter((u) => u.trim()).length === 3;
-  const isAdmin = user?.emailAddresses?.[0]?.emailAddress === ADMIN_EMAIL;
+  const isAdmin =
+    user?.emailAddresses?.some(
+      (e) => e.emailAddress.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+    ) ?? false;
 
   if (isLoaded && !user) {
     return (

@@ -48,8 +48,10 @@ export async function POST(req: NextRequest) {
 
   // Admin-only
   const user = await currentUser();
-  const email = user?.emailAddresses?.[0]?.emailAddress;
-  if (email !== process.env.ADMIN_EMAIL) {
+  const isAdmin = user?.emailAddresses?.some(
+    (e) => e.emailAddress.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()
+  );
+  if (!isAdmin) {
     return new Response("Forbidden", { status: 403 });
   }
 
