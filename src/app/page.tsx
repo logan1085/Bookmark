@@ -1,12 +1,31 @@
 import { Nav } from "@/components/nav";
 import { SubscribeForm } from "@/components/subscribe-form";
-import { ArticleCard } from "@/components/article-card";
 import { getSupabase } from "@/lib/supabase";
+import { getWeekGroups } from "@/data/articles";
 import Link from "next/link";
 import { ArrowRight, PenLine } from "lucide-react";
 import type { Digest } from "@/types/digest";
 
-async function getDigests(): Promise<Digest[]> {
+async function getAllDigests(): Promise<Digest[]> {
+  // Static curated articles converted to Digest shape
+  const staticDigests: Digest[] = getWeekGroups().map((wg) => ({
+    week: wg.week,
+    year: wg.year,
+    title: "",
+    intro: "",
+    articles: wg.articles.map((a) => ({
+      url: a.url,
+      title: a.title,
+      source: a.source,
+      summary: a.description,
+      keyInsight: a.why,
+      tags: a.tags,
+      readTime: a.readTime,
+    })),
+  }));
+
+  // Live Supabase digests
+  let liveDigests: Digest[] = [];
   try {
     const supabase = getSupabase();
     const { data } = await supabase
@@ -14,11 +33,17 @@ async function getDigests(): Promise<Digest[]> {
       .select("*")
       .order("year", { ascending: false })
       .order("week", { ascending: false })
-      .limit(10);
-    return data ?? [];
-  } catch {
-    return [];
-  }
+      .limit(20);
+    liveDigests = data ?? [];
+  } catch {}
+
+  // Merge: live takes priority over static for same week
+  const liveKeys = new Set(liveDigests.map((d) => `${d.year}-${d.week}`));
+  const filtered = staticDigests.filter((d) => !liveKeys.has(`${d.year}-${d.week}`));
+  const merged = [...liveDigests, ...filtered].sort((a, b) =>
+    b.year !== a.year ? b.year - a.year : b.week - a.week
+  );
+  return merged;
 }
 
 function weekLabel(week: number, year: number): string {
@@ -35,7 +60,7 @@ function weekLabel(week: number, year: number): string {
 export const revalidate = 60;
 
 export default async function Home() {
-  const digests = await getDigests();
+  const digests = await getAllDigests();
   const current = digests[0];
   const past = digests.slice(1, 4);
 
