@@ -1,18 +1,38 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest } from "next/server";
 import type { ArticleSummary, GenerateEvent } from "@/types/digest";
+
+export const maxDuration = 60; // extend Vercel timeout to 60s
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function fetchArticle(url: string): Promise<string> {
-  const jinaUrl = `https://r.jina.ai/${url}`;
-  const res = await fetch(jinaUrl, {
-    headers: { Accept: "text/plain" },
+  // Try Jina reader first
+  try {
+    const jinaUrl = `https://r.jina.ai/${url}`;
+    const res = await fetch(jinaUrl, {
+      headers: { Accept: "text/plain" },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.ok) {
+      const text = await res.text();
+      if (text.length > 200) return text.slice(0, 8000);
+    }
+  } catch {
+    // fall through to direct fetch
+  }
+
+  // Fallback: fetch the page directly
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+    signal: AbortSignal.timeout(10000),
   });
-  if (!res.ok) throw new Error(`Failed to fetch ${url}`);
-  const text = await res.text();
-  return text.slice(0, 8000); // cap to avoid token overflow
+  if (!res.ok) throw new Error(`Could not fetch article at ${url}`);
+  const html = await res.text();
+  // Strip tags crudely
+  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 8000);
+  return text;
 }
 
 function send(controller: ReadableStreamDefaultController, event: GenerateEvent) {
@@ -22,11 +42,15 @@ function send(controller: ReadableStreamDefaultController, event: GenerateEvent)
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
-  const adminEmail = process.env.ADMIN_EMAIL;
-
-  // Simple admin check — only allow the configured admin
   if (!userId) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Admin-only
+  const user = await currentUser();
+  const email = user?.emailAddresses?.[0]?.emailAddress;
+  if (email !== process.env.ADMIN_EMAIL) {
+    return new Response("Forbidden", { status: 403 });
   }
 
   const { urls }: { urls: string[] } = await req.json();
@@ -39,12 +63,22 @@ export async function POST(req: NextRequest) {
       try {
         const articles: ArticleSummary[] = [];
 
-        // Step 1: Fetch + summarize each article
         for (let i = 0; i < urls.length; i++) {
           const url = urls[i];
 
           send(controller, { type: "fetching", url, index: i });
-          const content = await fetchArticle(url);
+
+          let content: string;
+          try {
+            content = await fetchArticle(url);
+          } catch (err) {
+            send(controller, {
+              type: "error",
+              message: `Could not fetch article ${i + 1}: ${err instanceof Error ? err.message : "unknown error"}`,
+            });
+            controller.close();
+            return;
+          }
 
           send(controller, { type: "summarizing", url, index: i });
 
@@ -54,36 +88,43 @@ export async function POST(req: NextRequest) {
             messages: [
               {
                 role: "user",
-                content: `You are summarizing an article for a curated weekly reading digest.
+                content: `Summarize this article for a curated weekly reading digest.
 
-Article URL: ${url}
-Article content:
+URL: ${url}
+Content:
 ${content}
 
-Return a JSON object with exactly these fields:
+Return ONLY a valid JSON object with these exact fields:
 {
   "title": "the article's actual title",
   "source": "publication name (e.g. Wired, The Atlantic, Bloomberg)",
-  "summary": "2-3 sentences capturing the core argument or finding",
+  "summary": "2-3 sentences capturing the core argument",
   "keyInsight": "one punchy sentence — the single most interesting takeaway",
   "tags": ["tag1", "tag2", "tag3"],
   "readTime": "X min"
-}
-
-Return only valid JSON, no markdown.`,
+}`,
               },
             ],
           });
 
-          const raw = (message.content[0] as { text: string }).text.trim();
-          const parsed = JSON.parse(raw);
+          const raw = (message.content[0] as { text: string }).text.trim()
+            .replace(/^```json\n?/, "").replace(/\n?```$/, "");
+
+          let parsed;
+          try {
+            parsed = JSON.parse(raw);
+          } catch {
+            send(controller, { type: "error", message: `Failed to parse summary for article ${i + 1}` });
+            controller.close();
+            return;
+          }
+
           const article: ArticleSummary = { url, ...parsed };
           articles.push(article);
-
           send(controller, { type: "article_done", index: i, article });
         }
 
-        // Step 2: Write the connecting intro
+        // Write connecting intro
         send(controller, { type: "writing_intro" });
 
         const introMessage = await client.messages.create({
@@ -92,20 +133,17 @@ Return only valid JSON, no markdown.`,
           messages: [
             {
               role: "user",
-              content: `You are writing the intro for a curated weekly reading digest. The curator has chosen these 3 articles:
+              content: `Write the intro for a curated weekly reading digest with these 3 articles:
 
 ${articles.map((a, i) => `${i + 1}. "${a.title}" — ${a.keyInsight}`).join("\n")}
 
-Write a digest intro with:
-- "title": a compelling 5-8 word title for this week's digest (not generic, reflect the theme)
-- "intro": 2-3 sentences connecting these picks — what's the thread, why these 3 together, what does the curator want the reader to take away
-
-Return only valid JSON: {"title": "...", "intro": "..."}`,
+Return ONLY valid JSON: {"title": "5-8 word compelling title", "intro": "2-3 sentences connecting these picks and why they matter together"}`,
             },
           ],
         });
 
-        const introRaw = (introMessage.content[0] as { text: string }).text.trim();
+        const introRaw = (introMessage.content[0] as { text: string }).text.trim()
+          .replace(/^```json\n?/, "").replace(/\n?```$/, "");
         const { title, intro } = JSON.parse(introRaw);
 
         const now = new Date();

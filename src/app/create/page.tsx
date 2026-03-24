@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { Nav } from "@/components/nav";
 import type { Digest, GenerateEvent, ArticleSummary } from "@/types/digest";
 import { CheckCircle, Circle, Loader, Send, Eye } from "lucide-react";
@@ -19,8 +20,11 @@ const PLACEHOLDER_URLS = [
   "https://www.wired.com/story/...",
 ];
 
+const ADMIN_EMAIL = "LoganHorowitz2@gmail.com";
+
 export default function CreatePage() {
   const router = useRouter();
+  const { user, isLoaded } = useUser();
   const [urls, setUrls] = useState(["", "", ""]);
   const [step, setStep] = useState<Step>({ status: "idle" });
   const [events, setEvents] = useState<GenerateEvent[]>([]);
@@ -86,6 +90,23 @@ export default function CreatePage() {
   }
 
   const canGenerate = urls.filter((u) => u.trim()).length === 3;
+  const isAdmin = user?.emailAddresses?.[0]?.emailAddress === ADMIN_EMAIL;
+
+  if (isLoaded && !user) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <p className="text-stone-500">Sign in to access this page.</p>
+      </div>
+    );
+  }
+
+  if (isLoaded && !isAdmin) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <p className="text-stone-500">This page is for the curator only.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-stone-50">
