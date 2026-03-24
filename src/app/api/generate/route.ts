@@ -66,9 +66,10 @@ export async function POST(req: NextRequest) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  const { urls }: { urls: string[] } = await req.json();
-  if (!urls || urls.length !== 3) {
-    return new Response("Exactly 3 URLs required", { status: 400 });
+  const body = await req.json();
+  const articleInputs: { url: string; text?: string }[] = body.articles ?? body.urls?.map((u: string) => ({ url: u }));
+  if (!articleInputs || articleInputs.length !== 3) {
+    return new Response("Exactly 3 articles required", { status: 400 });
   }
 
   const stream = new ReadableStream({
@@ -76,14 +77,19 @@ export async function POST(req: NextRequest) {
       try {
         const articles: ArticleSummary[] = [];
 
-        for (let i = 0; i < urls.length; i++) {
-          const url = urls[i];
+        for (let i = 0; i < articleInputs.length; i++) {
+          const { url, text: pastedText } = articleInputs[i];
 
           send(controller, { type: "fetching", url, index: i });
 
           let content: string;
           try {
-            content = await fetchArticle(url);
+            // If user pasted the text (e.g. X/Twitter), use that directly
+            if (pastedText && pastedText.trim().length > 100) {
+              content = pastedText.slice(0, 8000);
+            } else {
+              content = await fetchArticle(url);
+            }
           } catch (err) {
             send(controller, {
               type: "error",
