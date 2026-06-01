@@ -128,3 +128,113 @@
     @apply font-sans;
   }
 }
+
+/* Subscribe form checkmark animation */
+@keyframes checkmark-draw {
+  0% {
+    stroke-dashoffset: 24;
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes success-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-checkmark {
+  animation: checkmark-draw 0.5s ease-out forwards;
+}
+
+.animate-success-fade {
+  animation: success-fade-in 0.4s ease-out forwards;
+}
+
+/* Spinner for loading state */
+@keyframes spin-smooth {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-smooth {
+  animation: spin-smooth 0.8s linear infinite;
+}
+
+/* Mobile menu slide down */
+@keyframes menu-slide-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+    max-height: 0;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 200px;
+  }
+}
+
+@keyframes menu-slide-up {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 200px;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+    max-height: 0;
+  }
+}
+
+.animate-menu-open {
+  animation: menu-slide-down 0.25s ease-out forwards;
+}
+
+.animate-menu-close {
+  animation: menu-slide-up 0.2s ease-in forwards;
+}
+
+/* Hero gradient decoration */
+@keyframes gradient-shift {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.hero-gradient {
+  background: radial-gradient(
+    ellipse 600px 400px at 0% 0%,
+    rgba(120, 113, 108, 0.08) 0%,
+    transparent 70%
+  );
+}
+
+/* Archive card hover lift */
+.archive-card {
+  transition: all 0.2s ease;
+}
+
+.archive-card:hover {
+  transform: translateY(-1px);
+}

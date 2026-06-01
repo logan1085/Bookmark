@@ -3,7 +3,7 @@ import { SubscribeForm } from "@/components/subscribe-form";
 import { getSupabase } from "@/lib/supabase";
 import { getWeekGroups } from "@/data/articles";
 import Link from "next/link";
-import { ArrowRight, PenLine, Clock, ExternalLink } from "lucide-react";
+import { ArrowRight, Clock, ExternalLink } from "lucide-react";
 import type { Digest, ArticleSummary } from "@/types/digest";
 
 export const revalidate = 60;
@@ -68,15 +68,20 @@ function ArticleItem({ article, index, featured = false }: { article: ArticleSum
       href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`group block rounded-2xl border bg-white p-6 transition-all hover:shadow-md ${
-        featured ? "border-stone-800" : "border-stone-200"
+      className={`group block rounded-2xl border bg-white p-6 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 ${
+        featured ? "border-stone-800" : "border-stone-200 hover:border-stone-300"
       }`}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${
             index === 0 ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-500"
           }`}>
+            <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black ${
+              index === 0 ? "bg-white/20 text-white" : "bg-stone-200 text-stone-600"
+            }`}>
+              {index + 1}
+            </span>
             {RANK_LABELS[index]}
           </span>
           <span className="text-xs font-medium text-stone-400">{article.source}</span>
@@ -93,18 +98,21 @@ function ArticleItem({ article, index, featured = false }: { article: ArticleSum
         {article.title}
       </h3>
 
-      <p className="text-sm text-stone-500 leading-relaxed mb-3">{article.summary}</p>
+      <p className="text-sm text-stone-500 leading-relaxed mb-3 max-w-prose">{article.summary}</p>
 
       {article.keyInsight && article.keyInsight !== article.summary && (
-        <p className="text-sm text-stone-400 italic border-l-2 border-stone-100 pl-3 leading-relaxed">
-          {article.keyInsight}
-        </p>
+        <div className="rounded-lg bg-amber-50/60 border border-amber-100 px-4 py-3 mb-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600/70 mb-1">Key Insight</p>
+          <p className="text-sm text-stone-600 leading-relaxed">
+            {article.keyInsight}
+          </p>
+        </div>
       )}
 
       {article.tags && article.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-3">
           {article.tags.map((tag) => (
-            <span key={tag} className="text-[10px] uppercase tracking-wide bg-stone-50 text-stone-400 px-2 py-0.5 rounded-full border border-stone-100">
+            <span key={tag} className="text-[10px] font-semibold uppercase tracking-wide bg-stone-100 text-stone-500 px-2.5 py-1 rounded-full border border-stone-150">
               {tag}
             </span>
           ))}
@@ -123,44 +131,106 @@ export default async function Home() {
     <div className="min-h-screen bg-stone-50">
       <Nav />
 
-      <main className="mx-auto max-w-2xl px-4 py-12">
+      <main className="mx-auto max-w-2xl px-4">
 
         {/* Hero */}
-        <header className="mb-14">
-          {current && (
-            <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">
-              Week {current.week} · {current.year}
-            </p>
-          )}
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-stone-900 mb-4 leading-[1.1]">
-            Three articles.<br />Every week.<br />No noise.
+        <header className="relative pt-20 pb-16 sm:pt-28 sm:pb-20">
+          {/* Decorative gradient background */}
+          <div className="hero-gradient absolute inset-0 -z-10 pointer-events-none" aria-hidden="true" />
+          <div className="absolute top-12 -left-20 w-72 h-72 bg-stone-200/30 rounded-full blur-3xl -z-10 pointer-events-none" aria-hidden="true" />
+
+          <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-stone-900 leading-[1.05] mb-6">
+            Three links.<br />Every week.<br />No noise.
           </h1>
-          <p className="text-stone-500 text-base max-w-sm leading-relaxed mb-8">
-            Hand-picked reads on AI, tech, and the ideas shaping what comes next. Summarized by Claude.
+          <p className="text-stone-500 text-lg sm:text-xl max-w-md leading-relaxed mb-10">
+            AI-curated reading digests that respect your time. Just three articles, thoughtfully summarized.
           </p>
-          <SubscribeForm />
+          <div className="max-w-md">
+            <SubscribeForm />
+          </div>
         </header>
 
-        {/* This week */}
+        {/* Visual preview card — newsletter-style */}
+        <section className="mb-20">
+          <div className="rounded-xl border border-stone-200 bg-white shadow-lg shadow-stone-200/50 overflow-hidden">
+            {/* Email-style header */}
+            <div className="px-6 pt-6 pb-4 border-b border-stone-100 bg-gradient-to-b from-stone-50 to-white">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full bg-stone-900 flex items-center justify-center">
+                  <span className="text-white text-xs font-black">B</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-stone-900">Bookmark Weekly</p>
+                  <p className="text-[11px] text-stone-400">Every Monday morning</p>
+                </div>
+              </div>
+              <p className="text-xs text-stone-400 uppercase tracking-widest font-semibold">
+                What you get
+              </p>
+            </div>
+
+            {/* Article previews */}
+            <div className="divide-y divide-stone-100">
+              {(current ? current.articles.slice(0, 3) : []).map((article, i) => (
+                <div key={i} className="px-6 py-4 flex gap-4 items-start">
+                  <span className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black mt-0.5 ${
+                    i === 0
+                      ? "bg-stone-900 text-white"
+                      : "bg-stone-100 text-stone-500"
+                  }`}>
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${
+                        i === 0 ? "text-stone-900" : "text-stone-400"
+                      }`}>
+                        {RANK_LABELS[i]}
+                      </span>
+                      <span className="text-[10px] text-stone-300">{article.source}</span>
+                    </div>
+                    <p className="text-sm font-semibold text-stone-900 leading-snug mb-1">{article.title}</p>
+                    <p className="text-xs text-stone-400 line-clamp-1">{article.summary}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 bg-stone-50 border-t border-stone-100 flex items-center justify-between">
+              <p className="text-xs text-stone-400 font-medium">
+                3 articles &middot; curated by AI
+              </p>
+              <p className="text-xs text-stone-400">
+                Read more &rarr;
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Latest Digest */}
         {current ? (
-          <section className="mb-16">
-            <div className="flex items-center justify-between mb-5">
+          <section className="mb-20">
+            <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400">
-                  This Week
+                  Latest Digest
                 </h2>
-                <p className="text-sm text-stone-400 mt-0.5">{weekLabel(current.week, current.year)}</p>
+                <p className="text-sm text-stone-400 mt-1">{weekLabel(current.week, current.year)}</p>
               </div>
-              <Link href="/create" className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-700 transition-colors">
-                <PenLine size={11} /> New digest
+              <Link
+                href={`/archive/${current.year}/${current.week}`}
+                className="flex items-center gap-1 text-xs font-medium text-stone-400 hover:text-stone-700 transition-colors"
+              >
+                View full <ArrowRight size={11} />
               </Link>
             </div>
 
             {/* Digest title + intro */}
             {current.title && (
-              <div className="mb-5 rounded-2xl bg-white border border-stone-200 px-6 py-5">
+              <div className="mb-6 rounded-2xl bg-white border border-stone-200 px-6 py-5">
                 <h3 className="font-bold text-stone-900 text-lg leading-snug mb-2">{current.title}</h3>
-                <p className="text-sm text-stone-500 leading-relaxed">{current.intro}</p>
+                <p className="text-sm text-stone-500 leading-relaxed max-w-prose">{current.intro}</p>
               </div>
             )}
 
@@ -171,40 +241,40 @@ export default async function Home() {
             </div>
           </section>
         ) : (
-          <section className="mb-16 rounded-2xl border border-dashed border-stone-200 py-16 text-center">
+          <section className="mb-20 rounded-2xl border border-dashed border-stone-200 py-16 text-center">
             <p className="text-stone-400 mb-3">No digest published yet.</p>
             <Link href="/create" className="text-sm font-medium text-stone-900 underline underline-offset-2">
-              Create the first one →
+              Create the first one &rarr;
             </Link>
           </section>
         )}
 
-        {/* Archive preview */}
+        {/* From the Archive */}
         {past.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-5">
+          <section className="pb-16">
+            <div className="flex items-center justify-between mb-6">
               <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400">
                 From the Archive
               </h2>
-              <Link href="/archive" className="flex items-center gap-1 text-xs text-stone-400 hover:text-stone-700 transition-colors">
+              <Link href="/archive" className="flex items-center gap-1 text-xs font-medium text-stone-400 hover:text-stone-700 transition-colors">
                 View all <ArrowRight size={11} />
               </Link>
             </div>
-            <div className="space-y-6">
+            <div className="space-y-8">
               {past.map((digest) => (
                 <div key={`${digest.year}-${digest.week}`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-xs font-medium text-stone-400 uppercase tracking-wide">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-xs font-semibold text-stone-400 uppercase tracking-wide whitespace-nowrap">
                       {weekLabel(digest.week, digest.year)}
                     </span>
-                    <div className="flex-1 h-px bg-stone-100" />
+                    <div className="flex-1 h-px bg-stone-200" />
                   </div>
                   {digest.articles[0] && (
                     <ArticleItem article={digest.articles[0]} index={0} />
                   )}
                   <Link
                     href={`/archive/${digest.year}/${digest.week}`}
-                    className="mt-2.5 inline-flex items-center gap-1 text-xs text-stone-400 hover:text-stone-700 transition-colors"
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-stone-400 hover:text-stone-700 transition-colors"
                   >
                     All 3 picks from this week <ArrowRight size={11} />
                   </Link>
@@ -214,15 +284,6 @@ export default async function Home() {
           </section>
         )}
       </main>
-
-      <footer className="border-t border-stone-100 mt-20 py-8">
-        <div className="mx-auto max-w-2xl px-4 text-center text-xs text-stone-400">
-          Curated by Logan Horowitz &mdash;{" "}
-          <a href="mailto:LoganHorowitz2@gmail.com" className="underline underline-offset-2 hover:text-stone-600">
-            suggest an article
-          </a>
-        </div>
-      </footer>
     </div>
   );
 }
