@@ -1,4 +1,5 @@
 import { Nav } from "@/components/nav";
+import { SubscribeForm } from "@/components/subscribe-form";
 import { getWeekGroups } from "@/data/articles";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -86,6 +87,21 @@ export default function ArchivePage() {
             )}
           </section>
         ))}
+
+        {/* Subscribe CTA at bottom of archive */}
+        <section className="mt-6 mb-8">
+          <div className="rounded-2xl border border-stone-200 bg-white px-6 py-10 text-center">
+            <h3 className="text-xl font-black text-stone-900 mb-2">
+              Get three links like these every Monday
+            </h3>
+            <p className="text-sm text-stone-500 mb-6 max-w-sm mx-auto leading-relaxed">
+              Stop browsing the archive. Let us bring the best reads to your inbox.
+            </p>
+            <div className="max-w-sm mx-auto">
+              <SubscribeForm />
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );

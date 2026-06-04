@@ -49,6 +49,19 @@ async function getAllDigests(): Promise<Digest[]> {
   return merged;
 }
 
+async function getSubscriberCount(): Promise<number> {
+  try {
+    const supabase = getSupabase();
+    const { count } = await supabase
+      .from("subscribers")
+      .select("*", { count: "exact", head: true })
+      .eq("active", true);
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 function weekLabel(week: number, year: number): string {
   const jan4 = new Date(year, 0, 4);
   const dayOfWeek = jan4.getDay() || 7;
@@ -122,8 +135,17 @@ function ArticleItem({ article, index, featured = false }: { article: ArticleSum
   );
 }
 
+function subscriberProof(count: number): string {
+  if (count >= 100) return `Join ${count.toLocaleString()} readers`;
+  if (count > 0) return `Join ${count} readers who value their time`;
+  return "Trusted by readers who value their time";
+}
+
 export default async function Home() {
-  const digests = await getAllDigests();
+  const [digests, subscriberCount] = await Promise.all([
+    getAllDigests(),
+    getSubscriberCount(),
+  ]);
   const current = digests[0];
   const past = digests.slice(1, 5);
 
@@ -142,13 +164,46 @@ export default async function Home() {
           <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-stone-900 leading-[1.05] mb-6">
             Three links.<br />Every week.<br />No noise.
           </h1>
-          <p className="text-stone-500 text-lg sm:text-xl max-w-md leading-relaxed mb-10">
+          <p className="text-stone-500 text-lg sm:text-xl max-w-md leading-relaxed mb-4">
             AI-curated reading digests that respect your time. Just three articles, thoughtfully summarized.
           </p>
-          <div className="max-w-md">
+
+          {/* Social proof */}
+          <p className="text-sm font-medium text-stone-400 mb-8">
+            {subscriberProof(subscriberCount)}
+          </p>
+
+          <div id="subscribe" className="max-w-md">
             <SubscribeForm />
           </div>
         </header>
+
+        {/* Manifesto / philosophy quote */}
+        <section className="mb-20">
+          <blockquote className="relative rounded-2xl border border-stone-200 bg-white px-8 py-10 sm:px-10 sm:py-12">
+            <div className="absolute -top-4 left-8 bg-stone-50 px-3">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-stone-300">The philosophy</span>
+            </div>
+            <p className="text-xl sm:text-2xl font-black text-stone-900 leading-snug tracking-tight">
+              Three links. Curated by AI.<br />
+              Delivered every Monday.<br />
+              That&apos;s it.
+            </p>
+          </blockquote>
+        </section>
+
+        {/* Why Bookmark? */}
+        <section className="mb-20">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-4">
+            Why Bookmark?
+          </h2>
+          <div className="rounded-2xl border border-stone-200 bg-white px-6 py-6 sm:px-8 sm:py-8">
+            <p className="text-stone-600 text-base sm:text-lg leading-relaxed max-w-prose">
+              Most newsletters overwhelm you. Bookmark gives you exactly three articles,
+              thoughtfully summarized by AI, every Monday morning. Read the best, skip the rest.
+            </p>
+          </div>
+        </section>
 
         {/* Visual preview card — newsletter-style */}
         <section className="mb-20">
@@ -283,6 +338,21 @@ export default async function Home() {
             </div>
           </section>
         )}
+
+        {/* Bottom CTA */}
+        <section className="pb-20">
+          <div className="rounded-2xl border border-stone-200 bg-white px-6 py-10 text-center">
+            <h3 className="text-xl font-black text-stone-900 mb-2">
+              Get three links like these every Monday
+            </h3>
+            <p className="text-sm text-stone-500 mb-6 max-w-sm mx-auto leading-relaxed">
+              No spam, no noise — just the reads worth your time.
+            </p>
+            <div className="max-w-sm mx-auto">
+              <SubscribeForm />
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );

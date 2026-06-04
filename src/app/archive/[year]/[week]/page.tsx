@@ -6,6 +6,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Clock, ExternalLink } from "lucide-react";
 import { ShareButtons } from "./share-buttons";
+import type { Metadata } from "next";
 import type { Digest, ArticleSummary } from "@/types/digest";
 
 const RANK_LABELS = ["Top Pick", "Also Great", "Worth Reading"];
@@ -42,6 +43,53 @@ async function getDigestForWeek(yearNum: number, weekNum: number): Promise<Diges
       tags: a.tags,
       readTime: a.readTime,
     })),
+  };
+}
+
+function parseTotalReadTime(articles: ArticleSummary[]): number {
+  let total = 0;
+  for (const a of articles) {
+    if (!a.readTime) continue;
+    const match = a.readTime.match(/(\d+)/);
+    if (match) total += Number(match[1]);
+  }
+  return total;
+}
+
+type PageProps = {
+  params: Promise<{ year: string; week: string }>;
+};
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { year, week } = await params;
+  const yearNum = Number(year);
+  const weekNum = Number(week);
+  const digest = await getDigestForWeek(yearNum, weekNum);
+
+  const title = digest?.title
+    ? `${digest.title} — Bookmark Week ${weekNum}`
+    : `Bookmark — Week ${weekNum}, ${yearNum}`;
+  const description = digest?.intro
+    ? digest.intro
+    : `Three thoughtfully curated articles for week ${weekNum} of ${yearNum}. AI-summarized reads worth your time.`;
+
+  const ogImageUrl = `/api/og/digest?week=${weekNum}&year=${yearNum}&title=${encodeURIComponent(digest?.title || `Week ${weekNum}, ${yearNum}`)}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImageUrl],
+    },
   };
 }
 
@@ -132,11 +180,7 @@ function DigestArticle({ article, index }: { article: ArticleSummary; index: num
   );
 }
 
-export default async function WeekPage({
-  params,
-}: {
-  params: Promise<{ year: string; week: string }>;
-}) {
+export default async function WeekPage({ params }: PageProps) {
   const { year, week } = await params;
   const yearNum = Number(year);
   const weekNum = Number(week);
@@ -163,10 +207,22 @@ export default async function WeekPage({
   const dateLabel = `${fmt(monday)} – ${fmt(sunday)}, ${yearNum}`;
 
   const pageUrl = `/archive/${year}/${week}`;
+  const totalReadTime = parseTotalReadTime(digest.articles);
 
   return (
     <div className="min-h-screen bg-stone-50">
       <Nav />
+
+      {/* Sticky share bar */}
+      <div className="sticky top-[57px] z-20 border-b border-stone-200 bg-stone-50/90 backdrop-blur-sm">
+        <div className="mx-auto max-w-2xl px-4 py-2.5 flex items-center justify-between">
+          <p className="text-xs font-semibold text-stone-500 truncate">
+            {digest.title || `Week ${weekNum}`} &middot; {digest.articles.length} articles{totalReadTime > 0 && ` · ${totalReadTime} min read`}
+          </p>
+          <ShareButtons pageUrl={pageUrl} />
+        </div>
+      </div>
+
       <main className="mx-auto max-w-2xl px-4 py-12">
         <Link
           href="/archive"
@@ -187,7 +243,14 @@ export default async function WeekPage({
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-stone-900 mb-2 leading-tight">
             {digest.title || dateLabel}
           </h1>
-          <p className="text-sm text-stone-400">{dateLabel} &middot; {digest.articles.length} articles</p>
+          <p className="text-sm text-stone-400">
+            {dateLabel} &middot; {digest.articles.length} articles
+            {totalReadTime > 0 && (
+              <span className="inline-flex items-center gap-1 ml-1">
+                &middot; <Clock size={12} className="inline" /> {totalReadTime} min total read time
+              </span>
+            )}
+          </p>
         </header>
 
         {/* Digest intro */}
@@ -204,18 +267,13 @@ export default async function WeekPage({
           ))}
         </div>
 
-        {/* Share buttons */}
-        <div className="mb-12">
-          <ShareButtons pageUrl={pageUrl} />
-        </div>
-
         {/* Subscribe CTA */}
         <div className="mb-14 rounded-2xl border border-stone-200 bg-white px-6 py-10 text-center">
           <h3 className="text-xl font-black text-stone-900 mb-2">
-            Subscribe for more
+            Get three links like these every Monday
           </h3>
           <p className="text-sm text-stone-500 mb-6 max-w-sm mx-auto leading-relaxed">
-            Three articles, every Monday. No spam, no noise -- just the reads worth your time.
+            No spam, no noise — just the reads worth your time.
           </p>
           <div className="max-w-sm mx-auto">
             <SubscribeForm />
