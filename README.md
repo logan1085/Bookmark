@@ -1,24 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bookmark
+
+Live site:
+
+- https://bookmark-black-eight.vercel.app/
+
+Bookmark is an AI-curated reading digest built around one simple idea: most readers do not want more content, they want better filtering.
+
+The product delivers three strong articles each week, with summaries and lightweight curation, so the experience feels more like signal compression than newsletter sprawl.
+
+## What it does
+
+- curates weekly article digests
+- summarizes links into faster-to-scan takes
+- collects subscribers
+- supports both static and live digests
+- uses AI as part of the editorial workflow rather than as gimmick copy
+
+## Why it exists
+
+This project reflects a product pattern I care about:
+
+- using AI to reduce noise instead of increase it
+- turning content overload into something usable
+- combining product judgment, workflow design, and distribution
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Next.js
+- TypeScript
+- Supabase
+- Resend
+- Anthropic SDK
+- Tailwind CSS
+
+## Notes
+
+- Static fallback content and live digests coexist, with live entries taking priority when present.
+- The product is designed around calm UX and email-style distribution rather than feed addiction.
 
 ## Learn More
 
